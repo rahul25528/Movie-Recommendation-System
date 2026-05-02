@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🎬 Movie Recommender</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d0d0d;
+      --surface: #161616;
+      --card: #1e1e1e;
+      --border: #2a2a2a;
+      --accent: #e8b84b;
+      --accent2: #e05c5c;
+      --text: #f0f0f0;
+      --muted: #888;
+      --radius: 10px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    header h1 { font-size: 1.3rem; font-weight: 600; }
+    header span { font-size: 1.5rem; }
+
+    .nav-tabs {
+      display: flex;
+      gap: 4px;
+      margin-left: auto;
+    }
+    .nav-tab {
+      padding: 6px 16px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    .nav-tab.active, .nav-tab:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.2rem;
+    }
+    .stat-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-value { font-size: 1.6rem; font-weight: 700; color: var(--accent); }
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .search-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .search-bar input, .search-bar select {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-bar input:focus, .search-bar select:focus { border-color: var(--accent); }
+    .search-bar input { flex: 1; min-width: 200px; }
+
+    .btn {
+      padding: 10px 20px;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-outline {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .autocomplete-wrap { position: relative; flex: 1; min-width: 200px; }
+    .autocomplete-list {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      z-index: 100;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+    .autocomplete-list div {
+      padding: 8px 14px;
+      cursor: pointer;
+      font-size: 13px;
+      border-bottom: 1px solid var(--border);
+    }
+    .autocomplete-list div:hover { background: var(--border); }
+    .autocomplete-list div:last-child { border-bottom: none; }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 14px;
+    }
+
+    .movie-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.2rem;
+      transition: border-color 0.2s, transform 0.15s;
+    }
+    .movie-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .movie-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
+    .movie-title { font-size: 15px; font-weight: 600; line-height: 1.3; }
+    .movie-year { font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .movie-genres { font-size: 12px; color: var(--accent); margin-bottom: 6px; }
+    .movie-overview { font-size: 12px; color: var(--muted); line-height: 1.5; margin-bottom: 8px; }
+    .movie-meta { display: flex; gap: 10px; font-size: 12px; }
+    .meta-pill {
+      background: var(--border);
+      padding: 3px 8px;
+      border-radius: 4px;
+      color: var(--text);
+    }
+    .meta-score { background: #2a2000; color: var(--accent); }
+    .rank-badge {
+      font-size: 11px;
+      font-weight: 700;
+      background: var(--accent);
+      color: #000;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .loading { text-align: center; padding: 3rem; color: var(--muted); font-size: 15px; }
+    .error-msg { background: #2d1010; border: 1px solid #5a1010; color: #f08080; padding: 12px 16px; border-radius: 8px; margin-bottom: 1rem; }
+
+    .filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1rem; }
+    .filter-btn {
+      padding: 5px 14px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    .filter-btn.active, .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .results-header { font-size: 14px; color: var(--muted); margin-bottom: 1rem; }
+    .results-header strong { color: var(--text); }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--muted);
+      font-size: 13px;
+      border-top: 1px solid var(--border);
+      margin-top: 3rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span>🎬</span>
+  <h1>Movie Recommender</h1>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="switchTab('top')">Top Movies</button>
+    <button class="nav-tab" onclick="switchTab('recommend')">Recommend</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Stats -->
+  <div class="stats-grid" id="stats-grid">
+    <div class="stat-card"><div class="stat-label">Movies</div><div class="stat-value" id="stat-total">—</div></div>
+    <div class="stat-card"><div class="stat-label">Avg Rating</div><div class="stat-value" id="stat-rating">—</div></div>
+    <div class="stat-card"><div class="stat-label">Languages</div><div class="stat-value" id="stat-langs">—</div></div>
+    <div class="stat-card"><div class="stat-label">Year Range</div><div class="stat-value" id="stat-years">—</div></div>
+  </div>
+
+  <!-- TOP MOVIES SECTION -->
+  <div class="section active" id="section-top">
+    <div class="search-bar">
+      <select id="top-genre">
+        <option value="">All Genres</option>
+        <option>Action</option><option>Drama</option><option>Comedy</option>
+        <option>Animation</option><option>Thriller</option><option>Crime</option>
+        <option>Romance</option><option>Science Fiction</option><option>Horror</option>
+        <option>Adventure</option><option>Fantasy</option><option>Documentary</option>
+      </select>
+      <input type="number" id="top-year-from" placeholder="Year from" min="1900" max="2023" style="width:130px"/>
+      <input type="number" id="top-year-to"   placeholder="Year to"   min="1900" max="2023" style="width:130px"/>
+      <select id="top-n">
+        <option value="5">Top 5</option>
+        <option value="10" selected>Top 10</option>
+        <option value="20">Top 20</option>
+      </select>
+      <button class="btn" onclick="loadTop()">Search</button>
+    </div>
+    <div id="top-results" class="results-grid"></div>
+  </div>
+
+  <!-- RECOMMEND SECTION -->
+  <div class="section" id="section-recommend">
+    <div class="search-bar">
+      <div class="autocomplete-wrap">
+        <input id="rec-title" type="text" placeholder="Type a movie title…" oninput="autocomplete(this.value)" autocomplete="off"/>
+        <div class="autocomplete-list" id="autocomplete-list" style="display:none"></div>
+      </div>
+      <select id="rec-method">
+        <option value="hybrid">Hybrid (recommended)</option>
+        <option value="content">Content-Based</option>
+      </select>
+      <select id="rec-n">
+        <option value="5">5 results</option>
+        <option value="10" selected>10 results</option>
+        <option value="20">20 results</option>
+      </select>
+      <button class="btn" onclick="loadRecommend()">Recommend</button>
+    </div>
+    <div id="rec-results" class="results-grid"></div>
+  </div>
+
+</div>
+
+<footer>
+  Movie Recommendation System &nbsp;·&nbsp; Built with Python · Scikit-learn · Flask<br/>
+  Dataset: TMDB Movies Metadata (45,466 movies)
+</footer>
+
+<script>
+  // ── Tab switching ──────────────────────────────────────────
+  function switchTab(tab) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('section-' + tab).classList.add('active');
+    event.target.classList.add('active');
+  }
+
+  // ── Render movie cards ─────────────────────────────────────
+  function renderCards(movies, container, showRank=false) {
+    if (!movies.length) {
+      container.innerHTML = '<p class="loading">No results found.</p>';
+      return;
+    }
+    container.innerHTML = movies.map((m, i) => `
+      <div class="movie-card">
+        <div class="movie-card-header">
+          <div class="movie-title">${m.title}</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span class="movie-year">${m.year}</span>
+            ${showRank ? `<span class="rank-badge">${i+1}</span>` : ''}
+          </div>
+        </div>
+        <div class="movie-genres">${m.genres || '—'}</div>
+        <div class="movie-overview">${m.overview}</div>
+        <div class="movie-meta">
+          <span class="meta-pill">⭐ ${m.rating}</span>
+          <span class="meta-pill">${(m.votes||0).toLocaleString()} votes</span>
+          <span class="meta-pill meta-score">Score ${m.score}</span>
+          ${m.similarity !== undefined ? `<span class="meta-pill">Sim ${m.similarity}</span>` : ''}
+          ${m.hybrid_score !== undefined ? `<span class="meta-pill">Hybrid ${m.hybrid_score}</span>` : ''}
+        </div>
+      </div>`).join('');
+  }
+
+  // ── Load stats ─────────────────────────────────────────────
+  async function loadStats() {
+    try {
+      const res = await fetch('/api/stats');
+      const d = await res.json();
+      document.getElementById('stat-total').textContent = d.total_movies.toLocaleString();
+      document.getElementById('stat-rating').textContent = d.avg_rating;
+      document.getElementById('stat-langs').textContent = d.languages;
+      document.getElementById('stat-years').textContent = d.year_range.join('–');
+    } catch(e) {}
+  }
+
+  // ── Load top movies ────────────────────────────────────────
+  async function loadTop() {
+    const genre    = document.getElementById('top-genre').value;
+    const yearFrom = document.getElementById('top-year-from').value;
+    const yearTo   = document.getElementById('top-year-to').value;
+    const topN     = document.getElementById('top-n').value;
+    const container = document.getElementById('top-results');
+    container.innerHTML = '<p class="loading">Loading…</p>';
+
+    let url = `/api/top?top_n=${topN}`;
+    if (genre)    url += `&genre=${encodeURIComponent(genre)}`;
+    if (yearFrom) url += `&year_from=${yearFrom}`;
+    if (yearTo)   url += `&year_to=${yearTo}`;
+
+    try {
+      const res = await fetch(url);
+      const d = await res.json();
+      renderCards(d.results, container, true);
+    } catch(e) {
+      container.innerHTML = `<div class="error-msg">Failed to load results.</div>`;
+    }
+  }
+
+  // ── Autocomplete ───────────────────────────────────────────
+  let acTimer;
+  async function autocomplete(val) {
+    clearTimeout(acTimer);
+    const list = document.getElementById('autocomplete-list');
+    if (val.length < 2) { list.style.display = 'none'; return; }
+    acTimer = setTimeout(async () => {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(val)}`);
+      const d = await res.json();
+      if (!d.results.length) { list.style.display = 'none'; return; }
+      list.innerHTML = d.results.map(r =>
+        `<div onclick="selectTitle('${r.title.replace(/'/g,"\\'")}')">
+          ${r.title} ${r.year ? `<span style="color:var(--muted);font-size:11px">${r.year}</span>` : ''}
+        </div>`).join('');
+      list.style.display = 'block';
+    }, 250);
+  }
+
+  function selectTitle(title) {
+    document.getElementById('rec-title').value = title;
+    document.getElementById('autocomplete-list').style.display = 'none';
+  }
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.autocomplete-wrap'))
+      document.getElementById('autocomplete-list').style.display = 'none';
+  });
+
+  // ── Load recommendations ───────────────────────────────────
+  async function loadRecommend() {
+    const title  = document.getElementById('rec-title').value.trim();
+    const method = document.getElementById('rec-method').value;
+    const topN   = document.getElementById('rec-n').value;
+    const container = document.getElementById('rec-results');
+
+    if (!title) {
+      container.innerHTML = '<div class="error-msg">Please enter a movie title.</div>';
+      return;
+    }
+    container.innerHTML = '<p class="loading">Finding similar movies…</p>';
+
+    try {
+      const res = await fetch(`/api/recommend?title=${encodeURIComponent(title)}&method=${method}&top_n=${topN}`);
+      const d = await res.json();
+      if (d.error) {
+        container.innerHTML = `<div class="error-msg">${d.error}</div>`;
+        return;
+      }
+      container.innerHTML = `<p class="results-header" style="grid-column:1/-1">
+        Showing <strong>${method}</strong> recommendations for <strong>"${d.query}"</strong>
+      </p>`;
+      const grid = document.createElement('div');
+      grid.className = 'results-grid';
+      grid.style.gridColumn = '1/-1';
+      renderCards(d.results, grid);
+      container.appendChild(grid);
+    } catch(e) {
+      container.innerHTML = `<div class="error-msg">Server error. Is the Flask app running?</div>`;
+    }
+  }
+
+  // Enter key trigger
+  document.addEventListener('DOMContentLoaded', () => {
+    loadStats();
+    loadTop();
+    document.getElementById('rec-title').addEventListener('keydown', e => {
+      if (e.key === 'Enter') loadRecommend();
+    });
+  });
+</script>
+</body>
+</html>
